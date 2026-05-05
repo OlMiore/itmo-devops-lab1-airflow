@@ -37,8 +37,14 @@ build-job:
 deploy-job:
   stage: deploy
   image: tmaier/docker-compose:latest
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
   script:
+    - echo "Cleaning old deployment..."
+    - docker-compose down --remove-orphans || true
+    - echo "Deploying application..."
     - docker-compose up -d
+    - echo "Application successfully deployed!"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop"'
       when: on_success
