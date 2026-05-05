@@ -1,0 +1,50 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  IMAGE_NAME: itmo-devops-labs-airflow
+
+default:
+  tags:
+    - devops-lab-runner
+
+test-job:
+  stage: test
+  image: alpine:latest
+  script:
+    - test -d dags
+    - test -d spark
+    - test -f Dockerfile
+    - test -f docker-compose.yml
+    - echo "Tests passed"
+  rules:
+    - when: always
+
+build-job:
+  stage: build
+  image: docker:latest
+  script:
+    - docker build -t $IMAGE_NAME .
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /^feature\//'
+      when: manual
+    - when: on_success
+
+deploy-job:
+  stage: deploy
+  image: tmaier/docker-compose:latest
+  script:
+    - docker-compose up -d
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+    - when: never
+
+clear-job:
+  stage: deploy
+  image: tmaier/docker-compose:latest
+  script:
+    - docker-compose rm -sf
+  when: manual
