@@ -103,3 +103,39 @@ DAG состоит из трёх задач:
 
 
 fix pipeline
+
+
+
+# **ITMO DevOps Lab 3: GitLab CI/CD**
+
+## Описание
+В рамках лабораторной работы был настроен CI / CD pipeline в GitLab
+
+## Что сделано
+- Поднят и настроен GitLab Runner (Docker executor)
+- Добавлен `.gitlab-ci.yml`
+- Реализованы стадии:
+  - `test` – проверка структуры проекта (наличие папок `dags/`, `spark/`)
+  - `build` – сборка Docker-образа
+  - `deploy` – деплой приложения через docker-compose
+- Настроены правила выполнения:
+  - `test` выполняется всегда
+  - `build` не выполняется автоматически для веток `feature/*`
+  - `deploy` выполняется только для `main`, `master`, `develop`
+
+## Особенности
+- Используется tagged runner: `devops-lab-runner`
+- Добавлена очистка окружения перед деплоем (`docker-compose down`)
+- Исправлены проблемы:
+  - доступ к Docker API
+  - конфликт порта 8080
+
+## Результат
+Pipeline успешно выполняется:
+
+- https://gitlab.com/aspnmrv/itmo-devops-labs/-/pipelines/2502089765
+- https://gitlab.com/aspnmrv/itmo-devops-labs
+
+## Скриншот
+
+![img.png](img.png)
