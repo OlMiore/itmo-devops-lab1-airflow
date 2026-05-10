@@ -1,78 +1,128 @@
-# **ITMO DevOps Lab 1: Apache Airflow Pipeline.**
+# **ITMO DevOps Lab 2: Apache Airflow + Spark Pipeline.**
 
 ## **Этот проект:**
 
- - разворачивает локальный Airflow‑кластер с помощью Docker Compose,
+ - разворачивает локальный Airflow-кластер с помощью Docker Compose,
 
- - создаёт кастомный Docker‑образ Airflow,
+ - поднимает Apache Spark master и worker,
 
- - инициализирует Airflow и создаёт пользователя,
+ - создаёт кастомный Docker-образ Airflow с Java, PySpark и Spark provider,
 
- - запускает простой DAG sum_numbers_dag, который:
+ - инициализирует Airflow, создаёт пользователя и подключение `spark_local`,
 
-   - генерирует список чисел,
+ - сохраняет DAG первой лабораторной `sum_numbers_dag`,
 
-   - вычисляет сумму,
+ - добавляет новый DAG `spark_sum_numbers_dag`, который запускает PySpark job через Spark.
 
-   - выводит результат в логах.
+## **Что делает Spark DAG:**
+
+`spark_sum_numbers_dag` запускает файл `spark/sum_numbers_job.py` через `SparkSubmitOperator`.
+
+Spark job:
+
+ - создаёт `SparkSession`,
+
+ - подключается к master-ноду `spark://spark-master:7077`,
+
+ - создаёт DataFrame со списком чисел,
+
+ - считает сумму средствами PySpark,
+
+ - выводит результат `Final Spark sum is: 15` в логах.
 
 ## **Архитектура проекта:**
 
 ```text
-itmo-devops-lab1-airflow/
+itmo-devops-labs/
 │
-├── dags/                     # DAG с тремя Python задачами
-│   └── my_first_dag.py
+├── dags/
+│   ├── my_first_dag.py             # DAG первой лабораторной
+│   └── spark_sum_numbers_dag.py    # DAG второй лабораторной
 │
-├── Dockerfile                # Кастомный образ Airflow
-├── docker-compose.yml        # Оркестрация Airflow + Postgres
-├── README.md                 # Документация проекта
-└── CHANGES.md                # История изменений (опционально)
+├── spark/
+│   └── sum_numbers_job.py          # PySpark job
+│
+├── Dockerfile                      # Кастомный образ Airflow
+├── docker-compose.yml              # Airflow + Postgres + Spark
+├── README.md                       # Документация проекта
+└── CHANGES.md                      # История изменений
 ```
 
 ## **Используемые технологии:**
 
- - Apache Airflow 2.7+
+ - Apache Airflow 2.7.1
 
- - Python 3.8
+ - Apache Spark 3.5.0
 
- - Docker & Docker Compose
+ - PySpark 3.5.0
 
  - PostgreSQL 13
 
- - LocalExecutor.
+ - LocalExecutor
 
 ## **Как задеплоить сервис локально:**
 
 1. Клонировать репозиторий:
 ```
-git clone https://github.com/OlMiore/itmo-devops-lab1-airflow.git
-cd itmo-devops-lab1-airflow
+git clone https://github.com/OlMiore/Itmo-devops-labs.git
+cd Itmo-devops-labs
+git checkout lab2
 ```
-2. Собрать Docker‑образ:
+
+2. Собрать Docker-образ:
+
 ```
 docker-compose build
 ```
+
 3. Инициализировать Airflow (миграции БД + создание пользователя):
+
 ```
 docker-compose up airflow-init
 ```
+
 4. Запустить все сервисы:
+
 ```
 docker-compose up -d
 ```
+
 5. Открыть Airflow UI:
+
 ```
 http://localhost:8080
 ```
+
 Логин: airflow  
 Пароль: airflow
 
-6. Включить и запустить DAG sum_numbers_dag в интерфейсе Airflow.
+6. Открыть Spark UI:
+
+```
+http://localhost:4040
+```
+
+7. Включить и запустить DAG `spark_sum_numbers_dag` в интерфейсе Airflow.
+
+После успешного запуска в Spark UI должен быть виден worker и выполненное Spark-приложение.
+
+## **Airflow Connection для Spark:**
+
+При запуске `airflow-init` подключение создаётся автоматически:
+
+ - Conn Id: `spark_local`
+
+ - Conn Type: `Spark`
+
+ - Host: `spark://spark-master`
+
+ - Port: `7077`
+
+Если нужно создать подключение вручную, откройте Airflow UI: Admin → Connections → + New.
 
 ## **DAG: sum_numbers_dag:**
 
-DAG состоит из трёх задач:
+Это DAG из первой лабораторной. Он состоит из трёх задач:
 
  - generate_numbers — создаёт список чисел,
 
@@ -81,22 +131,9 @@ DAG состоит из трёх задач:
  - print_result — выводит результат в лог.
 Пример результата в логах: Final sum is: 15.
 
-## **Скриншоты:**
+## **DAG: spark_sum_numbers_dag:**
 
-<img width="925" height="254" alt="image" src="https://github.com/user-attachments/assets/1da5448f-1276-4376-aa5b-8336e55bb293" />
-
-
-<img width="926" height="502" alt="image" src="https://github.com/user-attachments/assets/a9dca8f9-5281-43cd-98f8-b9aad87a6d12" />
-
-
-<img width="921" height="500" alt="image" src="https://github.com/user-attachments/assets/d77e1698-1b5b-4d91-a0c4-d0a2586c8717" />
-
-
-## **Проблемы и решения:**
-
-Была Ошибка 403 при просмотре логов.
-
-Решение: добавление единого AIRFLOW__WEBSERVER__SECRET_KEY во все сервисы.
+Этот DAG состоит из одной задачи `spark_sum_numbers`, которая отправляет `spark/sum_numbers_job.py` в Spark-кластер через `SparkSubmitOperator`.
 
 
 
