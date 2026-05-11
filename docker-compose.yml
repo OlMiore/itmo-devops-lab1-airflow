@@ -14,6 +14,10 @@ services:
     ports:
       - "4040:8080"
       - "7077:7077"
+    environment:
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.metrics.conf=/opt/spark/conf/metrics.properties"
+    volumes:
+      - ./spark/metrics.properties:/opt/spark/conf/metrics.properties
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"
 
   spark-worker:
@@ -23,6 +27,11 @@ services:
       - spark-master
     ports:
       - "7000:7000"
+      - "8081:8081"
+    environment:
+      SPARK_DAEMON_JAVA_OPTS: "-Dspark.metrics.conf=/opt/spark/conf/metrics.properties"
+    volumes:
+      - ./spark/metrics.properties:/opt/spark/conf/metrics.properties
     command: "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"
 
   airflow-init:
@@ -93,5 +102,51 @@ services:
       - ./spark:/opt/airflow/spark
     command: scheduler
 
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: alloy
+    depends_on:
+      - loki
+    volumes:
+      - ./logs:/opt/logs
+      - ./alloy.conf:/etc/alloy/config.alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    depends_on:
+      - loki
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana-data:/var/lib/grafana
+
 volumes:
   postgres-db-volume:
+  grafana-data:
